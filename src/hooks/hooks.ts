@@ -94,6 +94,8 @@ After(async function (this: CustomWorld, scenario: ITestCaseHookParameter): Prom
       scenario.result?.message,
       this.consoleErrors,
     );
+    // Add a small delay after failure to reduce auth rate-limiting impact on subsequent scenarios
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   if (this.context) {
