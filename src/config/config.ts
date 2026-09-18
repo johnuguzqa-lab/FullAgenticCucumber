@@ -13,7 +13,7 @@ import {
   VideoMode,
 } from '../types';
 
-dotenv.config({ quiet: true });
+dotenv.config({ quiet: true, override: true });
 
 const environmentConfigs: Record<EnvironmentName, EnvironmentConfig> = {
   dev: devConfig,

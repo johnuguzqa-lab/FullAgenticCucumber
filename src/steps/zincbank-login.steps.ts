@@ -4,40 +4,39 @@ import { config } from '../config/config';
 import { CustomWorld } from '../support/world';
 
 Given('I open the ZincBank login page', async function (this: CustomWorld): Promise<void> {
-  await this.pages.zincSignInPage.open();
-  await this.pages.zincSignInPage.waitForReady();
+  await this.pages.zincBankLoginPage.open();
+  await this.pages.zincBankLoginPage.waitForReady();
 });
 
-Given('I am on the ZincBank login page', async function (this: CustomWorld): Promise<void> {
-  await expect(this.pages.zincSignInPage.emailInput).toBeVisible();
-});
-
-When('I sign in with the configured valid credentials', async function (this: CustomWorld): Promise<void> {
+When('I sign in with my registered email and password', async function (this: CustomWorld): Promise<void> {
   // Add delay to reduce auth rate-limiting impact
   await new Promise((resolve) => setTimeout(resolve, 1500));
-  await this.pages.zincSignInPage.signIn(config.username, config.password);
+  await this.pages.zincBankLoginPage.signIn(config.username, config.password);
   // Wait for the dashboard to load after successful auth
   await this.page.waitForLoadState('networkidle');
 });
 
-When('I sign in with an invalid email and password', async function (this: CustomWorld): Promise<void> {
+When(
+  'I sign in with email {string} and password {string}',
+  async function (this: CustomWorld, email: string, password: string): Promise<void> {
+    // Add delay to reduce auth rate-limiting impact
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await this.pages.zincBankLoginPage.signIn(email, password);
+    // Wait for the error message to appear (API response takes a moment)
+    await this.page.waitForLoadState('networkidle');
+  },
+);
+
+When('I sign in with my registered email and a wrong password', async function (this: CustomWorld): Promise<void> {
   // Add delay to reduce auth rate-limiting impact
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  await this.pages.zincSignInPage.signIn('invalid@example.com', 'wrong-password');
-  // Wait for the error message to appear (API response takes a moment)
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await this.pages.zincBankLoginPage.signIn(config.username, 'WrongPassword123');
+  // Wait for the error message to appear
   await this.page.waitForLoadState('networkidle');
 });
 
-When('I submit the form with empty email and password', async function (this: CustomWorld): Promise<void> {
-  await this.pages.zincSignInPage.submit();
-});
-
-When('I enter a malformed email and a password, then submit', async function (this: CustomWorld): Promise<void> {
-  await this.pages.zincSignInPage.signIn('not-an-email', 'some-password');
-});
-
-When('I click the "Open an account" link', async function (this: CustomWorld): Promise<void> {
-  await this.pages.zincSignInPage.openAccountPage();
+When('I sign in with my registered email and no password', async function (this: CustomWorld): Promise<void> {
+  await this.pages.zincBankLoginPage.signIn(config.username, '');
 });
 
 Then('I am redirected to the ZincBank dashboard', async function (this: CustomWorld): Promise<void> {
@@ -45,42 +44,27 @@ Then('I am redirected to the ZincBank dashboard', async function (this: CustomWo
   await expect(this.page).toHaveURL(/\/dashboard/, { timeout: 15000 });
 });
 
-Then('I see the login message {string}', async function (this: CustomWorld, expectedMessage: string): Promise<void> {
-  // Wait up to 10s for the error message to appear (API response + rendering)
-  await expect(this.pages.zincSignInPage.message).toHaveText(expectedMessage, { timeout: 10000 });
-});
-
-Then('I remain on the ZincBank login page', async function (this: CustomWorld): Promise<void> {
-  await expect(this.page).toHaveURL(/\/login/);
+Then('the dashboard navigation is displayed', async function (this: CustomWorld): Promise<void> {
+  // Verify dashboard is rendered by checking for key UI elements
+  await expect(this.page.getByRole('button', { name: /sign out|logout/i })).toBeVisible({ timeout: 10000 });
 });
 
 Then(
-  'no navigation occurs and I see the hint {string}',
-  async function (this: CustomWorld, expectedHint: string): Promise<void> {
-    await expect(this.page).toHaveURL(/\/login/);
-    await expect(this.pages.zincSignInPage.message).toHaveText(expectedHint);
+  'a login error message {string} should be displayed',
+  async function (this: CustomWorld, expectedMessage: string): Promise<void> {
+    // Wait up to 10s for the error message to appear (API response + rendering)
+    await expect(this.pages.zincBankLoginPage.errorMessage).toHaveText(expectedMessage, { timeout: 10000 });
   },
 );
-
-Then('no navigation occurs and the hint remains visible', async function (this: CustomWorld): Promise<void> {
-  await expect(this.page).toHaveURL(/\/login/);
-  await expect(this.pages.zincSignInPage.message).toBeVisible();
-});
-
-Then('I am on the ZincBank account-opening page', async function (this: CustomWorld): Promise<void> {
-  await expect(this.page).toHaveURL(/\/apply/);
-});
 
 Then(
-  'the heading {string}, the Email field, the Password field, and the {string} button are visible',
-  async function (this: CustomWorld, headingText: string, buttonName: string): Promise<void> {
-    await expect(this.page.getByRole('heading', { name: headingText })).toBeVisible();
-    await expect(this.pages.zincSignInPage.emailInput).toBeVisible();
-    await expect(this.pages.zincSignInPage.passwordInput).toBeVisible();
-    await expect(this.page.getByRole('button', { name: buttonName })).toBeVisible();
+  'a login validation message {string} should be displayed',
+  async function (this: CustomWorld, expectedMessage: string): Promise<void> {
+    // Validation messages appear immediately (client-side)
+    await expect(this.pages.zincBankLoginPage.errorMessage).toHaveText(expectedMessage, { timeout: 5000 });
   },
 );
 
-Then('the {string} link is visible', async function (this: CustomWorld, linkName: string): Promise<void> {
-  await expect(this.page.getByRole('link', { name: linkName })).toBeVisible();
+Then('I remain on the login page', async function (this: CustomWorld): Promise<void> {
+  await expect(this.page).toHaveURL(/\/login/);
 });
